@@ -1,7 +1,12 @@
 import re
 import argparse
-from git import Repo, GitCommandError
+from git import Repo, GitCommandError, Actor
 import gitlab
+import os
+
+def format_path(path):
+    """Форматирует путь с прямыми слэшами."""
+    return path.replace("\\", "/")
 
 def main():
     parser = argparse.ArgumentParser(description="Скрипт для автоматизации создания веток и Merge Request в GitLab.")
@@ -16,6 +21,8 @@ def main():
     parser.add_argument("--gl_base_url", default="https://gitlab.com/", help="Базовый URL GitLab.")
     parser.add_argument("--gl_token", required=True, help="Токен доступа GitLab.")
     parser.add_argument("--create_mr", action='store_true', help="Создать Merge Request после создания ветки.")
+    parser.add_argument("--author_name", required=True, help="Имя автора для коммитов и Merge Request.")
+    parser.add_argument("--author_email", required=True, help="Email автора для коммитов и Merge Request.")
 
     args = parser.parse_args()
 
@@ -81,19 +88,21 @@ def main():
         raise RuntimeError(f"Ветка {new_branch_name} уже существует {location}.")
 
     def check_and_confirm_files():
-        changed_files = [item.a_path for item in repo.index.diff(None)]
-        staged_files = [item.a_path for item in repo.index.diff("HEAD")]
+        changed_files = [os.path.abspath(item.a_path) for item in repo.index.diff(None)]
+        staged_files = [os.path.abspath(item.a_path) for item in repo.index.diff("HEAD")]
 
         if not changed_files and not staged_files:
             raise RuntimeError(f"Нет изменений для коммита в ветке '{current_branch_name}'. Пожалуйста, добавьте файлы перед запуском скрипта.")
 
         if staged_files:
-            print(f"✔ Добавленные файлы: {staged_files}")
+            formatted_staged_files = [format_path(f) for f in staged_files]
+            print("✔ Добавленные файлы:\n" + "\n".join(formatted_staged_files))
             continue_response = input("Хотите продолжить с этими добавленными файлами? (y/n): ")
             if continue_response.lower() != "y":
                 raise RuntimeError("Прерывание. Пожалуйста, добавьте необходимые файлы и запустите скрипт снова.")
         else:
-            print(f"✎ Измененные файлы: {changed_files}")
+            formatted_changed_files = [format_path(f) for f in changed_files]
+            print("✎ Измененные файлы:\n" + "\n".join(formatted_changed_files))
             continue_response = input("Нет добавленных файлов для коммита. Хотите добавить все измененные файлы? (y/n): ")
             if continue_response.lower() != "y":
                 raise RuntimeError("Прерывание. Пожалуйста, добавьте необходимые файлы и запустите скрипт снова.")
@@ -106,22 +115,32 @@ def main():
 
         return staged_files if staged_files else changed_files
 
-    if args.create_mr:
-        files_to_commit = check_and_confirm_files()
-        new_branch_ref = repo.create_head(new_branch_name)
-        new_branch_ref.checkout()
-        repo.index.commit(args.initial_commit_msg)
-        repo.remote().push(refspec=f"{new_branch_name}:{new_branch_name}")
-        print(f"✔ Ветка '{new_branch_name}' успешно создана и отправлена в удаленный репозиторий.")
+    files_to_commit = check_and_confirm_files()
+    formatted_files_to_commit = [format_path(f) for f in files_to_commit]
+    print("\n--- Подтверждение создания ветки и отправки на удаленный репозиторий ---")
+    print(f"Создана новая ветка: {new_branch_name}")
+    print("Добавленные файлы:\n" + "\n".join(formatted_files_to_commit))
+    print(f"Автор созданной ветки: {args.author_name}")
+    print(f"Email автора созданной ветки: {args.author_email}")
+    confirm_branch = input("Вы согласны создать и отправить ветку с такими данными? (y/n): ")
+    if confirm_branch.lower() != "y":
+        raise RuntimeError("Создание ветки и отправка отменены пользователем.")
 
+    new_branch_ref = repo.create_head(new_branch_name)
+    new_branch_ref.checkout()
+    author = Actor(args.author_name, args.author_email)
+    repo.index.commit(args.initial_commit_msg, author=author)
+    repo.remote().push(refspec=f"{new_branch_name}:{new_branch_name}")
+    print(f"✔ Ветка '{new_branch_name}' успешно создана и отправлена в удаленный репозиторий.")
+
+    if args.create_mr:
         gl = gitlab.Gitlab(args.gl_base_url, private_token=args.gl_token)
         project = gl.projects.get(args.gl_proj_id)
-
-        print("\n--- Общая информация ---")
-        print(f"Создана новая ветка: {new_branch_name}")
-        print(f"Добавлены файлы: {files_to_commit}")
-        print(f"Целевая ветка: {args.base_branch}")
+        print("\n--- Подтверждение создания Merge Request ---")
         print(f"Merge Request заголовок: {mr_title}")
+        print(f"Целевая ветка: {args.base_branch}")
+        print(f"Автор Merge Request: {args.author_name}")
+        print(f"Email автора Merge Request: {args.author_email}")
         print("------------------------")
 
         confirm_mr = input("Согласны ли вы отправить Merge Request с такими данными? (y/n): ")
@@ -132,6 +151,10 @@ def main():
             "source_branch": new_branch_name,
             "target_branch": args.base_branch,
             "title": mr_title,
+            "author": {
+                "name": args.author_name,
+                "email": args.author_email
+            },
             "squash": True,
         })
 
@@ -143,19 +166,14 @@ def main():
         print(mr.web_url)
         print("\n--- Общая информация ---")
         print(f"Создана новая ветка: {new_branch_name}")
-        print(f"Добавлены файлы: {files_to_commit}")
+        print("Добавленные файлы:\n" + "\n".join(formatted_files_to_commit))
         print(f"Целевая ветка: {args.base_branch}")
         print(f"Merge Request заголовок: {mr.title}")
         print(f"URL Merge Request: {mr.web_url}")
         print(f"Описание Merge Request: {mr.description if mr.description else 'Описание отсутствует.'}")
-        print(f"Автор Merge Request: {author.name}")
-        print(f"Email автора Merge Request: {author_email}")
-        print(f"Дата создания Merge Request: {mr.created_at}")
+        print(f"Автор Merge Request: {args.author_name}")
+        print(f"Email автора Merge Request: {args.author_email}")
         print("------------------------")
-    else:
-        new_branch_ref = repo.create_head(new_branch_name)
-        new_branch_ref.checkout()
-        print(f"✔ Ветка '{new_branch_name}' успешно создана.")
 
 if __name__ == "__main__":
     main()
