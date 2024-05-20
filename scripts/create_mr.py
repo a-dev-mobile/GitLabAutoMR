@@ -15,6 +15,7 @@ def main():
     parser.add_argument("--gl_proj_id", type=int, required=True, help="ID проекта в GitLab.")
     parser.add_argument("--gl_base_url", default="https://gitlab.com/", help="Базовый URL GitLab.")
     parser.add_argument("--gl_token", required=True, help="Токен доступа GitLab.")
+    parser.add_argument("--create_mr", action='store_true', help="Создать Merge Request после создания ветки.")
 
     args = parser.parse_args()
 
@@ -38,30 +39,46 @@ def main():
     repo = Repo(args.proj_path)
     current_branch_name = repo.active_branch.name
     if current_branch_name != args.base_branch:
-        raise RuntimeError(f"Вы не на ветке '{args.base_branch}'. Вы на ветке '{current_branch_name}'. Пожалуйста, переключитесь на '{args.base_branch}' и попробуйте снова.")    
+        switch_branch = input(f"Вы не на ветке '{args.base_branch}'. Вы на ветке '{current_branch_name}'. Хотите переключиться на '{args.base_branch}'? (y/n): ")
+        if switch_branch.lower() == 'y':
+            repo.git.checkout(args.base_branch)
+            print(f"Переключение на ветку '{args.base_branch}' успешно.")
+        else:
+            raise RuntimeError(f"Необходимо переключиться на ветку '{args.base_branch}' для продолжения.")
 
     def branch_exists(branch_name):
+        local_exists = False
+        remote_exists = False
+
         try:
             repo.git.rev_parse("--verify", f"refs/heads/{branch_name}")
-            print(f"Локальная ветка '{branch_name}' существует.")
-            return True
+            print(f"✔ Локальная ветка '{branch_name}' существует.")
+            local_exists = True
         except GitCommandError:
-            print(f"Локальная ветка '{branch_name}' не существует.")
+            print(f"✘ Локальная ветка '{branch_name}' не существует.")
 
         for remote in repo.remotes:
             try:
                 branches = repo.git.ls_remote("--heads", remote.name, branch_name)
                 if branches:
-                    print(f"Удаленная ветка '{branch_name}' существует на удаленном '{remote.name}'.")
-                    return True
+                    print(f"✔ Удаленная ветка '{branch_name}' существует на удаленном '{remote.name}'.")
+                    remote_exists = True
             except GitCommandError:
-                print(f"Не удалось проверить удаленную ветку '{branch_name}' на удаленном '{remote.name}'.")
-                continue
+                print(f"✘ Не удалось проверить удаленную ветку '{branch_name}' на удаленном '{remote.name}'.")
 
-        return False
+        if local_exists and remote_exists:
+            return "локально и на удаленном репозитории"
+        elif local_exists:
+            return "локально"
+        elif remote_exists:
+            return "на удаленном репозитории"
+        else:
+            print(f"✘ Ветка '{branch_name}' не найдена ни локально, ни на удаленных репозиториях.")
+            return False
 
-    if branch_exists(new_branch_name):
-        raise RuntimeError(f"Ветка {new_branch_name} уже существует.")
+    location = branch_exists(new_branch_name)
+    if location:
+        raise RuntimeError(f"Ветка {new_branch_name} уже существует {location}.")
 
     def check_and_confirm_files():
         changed_files = [item.a_path for item in repo.index.diff(None)]
@@ -71,57 +88,74 @@ def main():
             raise RuntimeError(f"Нет изменений для коммита в ветке '{current_branch_name}'. Пожалуйста, добавьте файлы перед запуском скрипта.")
 
         if staged_files:
-            print(f"Добавленные файлы: {staged_files}")
+            print(f"✔ Добавленные файлы: {staged_files}")
             continue_response = input("Хотите продолжить с этими добавленными файлами? (y/n): ")
             if continue_response.lower() != "y":
                 raise RuntimeError("Прерывание. Пожалуйста, добавьте необходимые файлы и запустите скрипт снова.")
         else:
-            print(f"Измененные файлы: {changed_files}")
+            print(f"✎ Измененные файлы: {changed_files}")
             continue_response = input("Нет добавленных файлов для коммита. Хотите добавить все измененные файлы? (y/n): ")
             if continue_response.lower() != "y":
                 raise RuntimeError("Прерывание. Пожалуйста, добавьте необходимые файлы и запустите скрипт снова.")
             else:
                 repo.git.add(A=True)
+                print(f"✔ Все измененные файлы добавлены для коммита.")
 
         if not repo.index.diff("HEAD"):
             raise RuntimeError("Нет добавленных файлов для коммита. Пожалуйста, добавьте файлы перед запуском скрипта.")
 
         return staged_files if staged_files else changed_files
 
-    files_to_commit = check_and_confirm_files()
-    new_branch_ref = repo.create_head(new_branch_name)
-    new_branch_ref.checkout()
-    repo.index.commit(args.initial_commit_msg)
-    repo.remote().push(refspec=f"{new_branch_name}:{new_branch_name}")
+    if args.create_mr:
+        files_to_commit = check_and_confirm_files()
+        new_branch_ref = repo.create_head(new_branch_name)
+        new_branch_ref.checkout()
+        repo.index.commit(args.initial_commit_msg)
+        repo.remote().push(refspec=f"{new_branch_name}:{new_branch_name}")
+        print(f"✔ Ветка '{new_branch_name}' успешно создана и отправлена в удаленный репозиторий.")
 
-    gl = gitlab.Gitlab(args.gl_base_url, private_token=args.gl_token)
-    project = gl.projects.get(args.gl_proj_id)
-    mr = project.mergerequests.create({
-        "source_branch": new_branch_name,
-        "target_branch": args.base_branch,
-        "title": mr_title,
-        "squash": True,
-    })
+        gl = gitlab.Gitlab(args.gl_base_url, private_token=args.gl_token)
+        project = gl.projects.get(args.gl_proj_id)
 
-    author = gl.users.get(mr.author['id'])
-    author_email = author.email if hasattr(author, 'email') else "Email отсутствует"
+        print("\n--- Общая информация ---")
+        print(f"Создана новая ветка: {new_branch_name}")
+        print(f"Добавлены файлы: {files_to_commit}")
+        print(f"Целевая ветка: {args.base_branch}")
+        print(f"Merge Request заголовок: {mr_title}")
+        print("------------------------")
 
-    print("Merge Request создан")
-    print("")
-    print(mr.title)
-    print(mr.web_url)
+        confirm_mr = input("Согласны ли вы отправить Merge Request с такими данными? (y/n): ")
+        if confirm_mr.lower() != "y":
+            raise RuntimeError("Merge Request отменен пользователем.")
 
-    print("\n--- Общая информация ---")
-    print(f"Создана новая ветка: {new_branch_name}")
-    print(f"Добавлены файлы: {files_to_commit}")
-    print(f"Целевая ветка: {args.base_branch}")
-    print(f"Merge Request заголовок: {mr.title}")
-    print(f"URL Merge Request: {mr.web_url}")
-    print(f"Описание Merge Request: {mr.description if mr.description else 'Описание отсутствует.'}")
-    print(f"Автор Merge Request: {author.name}")
-    print(f"Email автора Merge Request: {author_email}")
-    print(f"Дата создания Merge Request: {mr.created_at}")
-    print("------------------------")
+        mr = project.mergerequests.create({
+            "source_branch": new_branch_name,
+            "target_branch": args.base_branch,
+            "title": mr_title,
+            "squash": True,
+        })
+
+        author = gl.users.get(mr.author['id'])
+        author_email = author.email if hasattr(author, 'email') else "Email отсутствует"
+
+        print("\n✔ Merge Request создан")
+        print(mr.title)
+        print(mr.web_url)
+        print("\n--- Общая информация ---")
+        print(f"Создана новая ветка: {new_branch_name}")
+        print(f"Добавлены файлы: {files_to_commit}")
+        print(f"Целевая ветка: {args.base_branch}")
+        print(f"Merge Request заголовок: {mr.title}")
+        print(f"URL Merge Request: {mr.web_url}")
+        print(f"Описание Merge Request: {mr.description if mr.description else 'Описание отсутствует.'}")
+        print(f"Автор Merge Request: {author.name}")
+        print(f"Email автора Merge Request: {author_email}")
+        print(f"Дата создания Merge Request: {mr.created_at}")
+        print("------------------------")
+    else:
+        new_branch_ref = repo.create_head(new_branch_name)
+        new_branch_ref.checkout()
+        print(f"✔ Ветка '{new_branch_name}' успешно создана.")
 
 if __name__ == "__main__":
     main()
