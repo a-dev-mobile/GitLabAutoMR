@@ -111,8 +111,10 @@ def main():
     current_branch_name = repo.active_branch.name
 
     if repo.is_dirty(untracked_files=True):
-        raise RuntimeError(f"Целевая ветка '{args.base_branch}' содержит изменения. Пожалуйста, откатите изменения перед продолжением.")
-
+        user_response = input(f"Целевая ветка '{args.base_branch}' содержит изменения. Продолжить? (y/n): ")
+        if user_response.lower() != 'y':
+            raise RuntimeError("Процесс прерван пользователем из-за несохраненных изменений в целевой ветке.")
+    
     if current_branch_name != args.base_branch:
         raise RuntimeError(f"Вы не на ветке '{args.base_branch}'. Вы на ветке '{current_branch_name}'. Необходимо переключиться на целевую ветку '{args.base_branch}' для продолжения.")
 
