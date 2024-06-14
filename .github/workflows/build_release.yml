@@ -28,39 +28,27 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install gitpython==3.1.43 python-gitlab==4.6.0 argparse==1.4.0 prettytable==3.10.0 pyinstaller==6.8.0
-
     - name: Add certificate content to script (Linux/MacOS)
       if: runner.os != 'Windows'
       env:
         CERTIFICATE: ${{ secrets.CERTIFICATE }}
       run: |
         python -c "import os; cert_content = os.getenv('CERTIFICATE'); lines = open('scripts/main.py').readlines(); lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"\n'; open('scripts/main.py', 'w').writelines(lines)"
-
     - name: Add certificate content to script (Windows)
       if: runner.os == 'Windows'
       env:
         CERTIFICATE: ${{ secrets.CERTIFICATE }}
       run: |
-        $certContent = [System.Environment]::GetEnvironmentVariable("CERTIFICATE")
-        $scriptContent = @"
-import os
-cert_content = os.getenv('CERTIFICATE')
-lines = open('scripts/main.py', 'r', encoding='utf-8').readlines()
-line_content = 'CERTIFICATE = \"\"\"' + cert_content + '\"\"\"'
-lines[10] = line_content + '\n'
-open('scripts/main.py', 'w', encoding='utf-8').writelines(lines)
-"@
-        $scriptPath = "temp_script.py"
-        $scriptContent | Set-Content -Path $scriptPath -Encoding UTF8
-        python $scriptPath
-        Remove-Item -Path $scriptPath
-
-  
-
+        echo "import os" > temp_script.py
+        echo "cert_content = os.getenv('CERTIFICATE')" >> temp_script.py
+        echo "lines = open('scripts/main.py', 'r', encoding='utf-8').readlines()" >> temp_script.py
+        echo "lines[10] = f'''CERTIFICATE = \"\"\"{cert_content}\"\"\"\            \n'''" >> temp_script.py
+        echo "open('scripts/main.py', 'w', encoding='utf-8').writelines(lines)" >> temp_script.py
+        python temp_script.py
+        del temp_script.py
     - name: Build executable
       run: |
         pyinstaller --onefile scripts/main.py
-
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
