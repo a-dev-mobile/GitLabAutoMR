@@ -30,7 +30,9 @@ jobs:
         pip install gitpython==3.1.43 python-gitlab==4.6.0 argparse==1.4.0 prettytable==3.10.0 pyinstaller==6.8.0
 
     - name: Set CERTIFICATE environment variable
-      run: echo "CERTIFICATE=${{ secrets.CERTIFICATE }}" >> $GITHUB_ENV
+      run: |
+        echo "${{ secrets.CERTIFICATE }}" > certificate.pem
+        echo "REQUESTS_CA_BUNDLE=$(pwd)/certificate.pem" >> $GITHUB_ENV
 
     - name: Build executable
       run: |
