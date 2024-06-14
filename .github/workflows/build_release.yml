@@ -31,9 +31,10 @@ jobs:
 
     - name: Add certificate content to script
       run: |
-        echo "CERTIFICATE = \"\"\"${{ secrets.CERTIFICATE }}\"\"\"" > temp_cert.py
-        cat temp_cert.py scripts/main.py > combined.py
-        mv combined.py scripts/main.py
+        python -c "cert_content = '''${{ secrets.CERTIFICATE }}'''; \
+                  with open('scripts/main.py', 'r') as file: lines = file.readlines(); \
+                  lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"\n'; \
+                  with open('scripts/main.py', 'w') as file: file.writelines(lines)"
 
     - name: Build executable
       run: |
