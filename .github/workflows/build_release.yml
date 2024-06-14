@@ -45,7 +45,7 @@ jobs:
         echo "cert_content = os.getenv('CERTIFICATE')" >> temp_script.py
         echo "lines = open('scripts/main.py', 'r', encoding='utf-8').readlines()" >> temp_script.py
         echo "line_content = 'CERTIFICATE = \"\"\"' + cert_content + '\"\"\"'" >> temp_script.py
-        echo "lines[10] = line_content + '\\n'" >> temp_script.py
+        echo "lines[10] = line_content" >> temp_script.py
         echo "open('scripts/main.py', 'w', encoding='utf-8').writelines(lines)" >> temp_script.py
         python temp_script.py
         del temp_script.py
