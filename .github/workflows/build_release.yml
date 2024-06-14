@@ -19,7 +19,17 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: List directory contents
+    - name: Install Git (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/setup-python@v4
+
+    - name: List directory contents (Ubuntu and macOS)
+      if: runner.os != 'Windows'
+      run: ls -alh
+
+    - name: List directory contents (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
       run: ls -alh
 
     - name: Set up Python
