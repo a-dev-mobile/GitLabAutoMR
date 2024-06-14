@@ -44,7 +44,7 @@ jobs:
         echo "import os" > temp_script.py
         echo "cert_content = os.getenv('CERTIFICATE')" >> temp_script.py
         echo "lines = open('scripts/main.py', 'r', encoding='utf-8').readlines()" >> temp_script.py
-        echo "lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"'" >> temp_script.py
+        echo "lines[10] = f\"CERTIFICATE = '''{cert_content}'''\n\"" >> temp_script.py
         echo "open('scripts/main.py', 'w', encoding='utf-8').writelines(lines)" >> temp_script.py
         python temp_script.py
         echo "------ Updated Script Content ------"
