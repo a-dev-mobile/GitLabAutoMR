@@ -19,9 +19,20 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install gitpython==3.1.43 python-gitlab==4.6.0 argparse==1.4.0 prettytable==3.10.0 pyinstaller==6.8.0
+
     - name: Install Git (Windows)
       if: runner.os == 'Windows'
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
 
     - name: List directory contents (Ubuntu and macOS)
       if: runner.os != 'Windows'
@@ -31,16 +42,6 @@ jobs:
       if: runner.os == 'Windows'
       shell: bash
       run: ls -alh
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install gitpython==3.1.43 python-gitlab==4.6.0 argparse==1.4.0 prettytable==3.10.0 pyinstaller==6.8.0
 
     - name: Add certificate content to script
       env:
