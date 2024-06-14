@@ -31,7 +31,9 @@ jobs:
 
     - name: Add certificate content to script
       run: |
-        printf '%s\n' "${{ secrets.CERTIFICATE }}" | perl -p -e 's|<sertificate content>|$_|' -i scripts/main.py
+        echo "CERTIFICATE = \"\"\"${{ secrets.CERTIFICATE }}\"\"\"" > temp_cert.py
+        cat temp_cert.py scripts/main.py > combined.py
+        mv combined.py scripts/main.py
 
     - name: Build executable
       run: |
