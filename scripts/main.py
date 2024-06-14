@@ -4,6 +4,7 @@ from git import Repo, GitCommandError, Actor
 import gitlab
 import os
 from prettytable import PrettyTable, ALL
+import tempfile
 
 def format_path(path):
     """Форматирует путь с прямыми слэшами."""
@@ -22,9 +23,12 @@ def get_project_name(proj_path):
     """Получает название проекта из последней папки в пути"""
     return os.path.basename(os.path.normpath(proj_path))
 
-def configure_environment(cert_path):
+def configure_environment(cert_content):
     """Настраивает окружение"""
-    os.environ['REQUESTS_CA_BUNDLE'] = cert_path
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.pem') as temp_cert_file:
+        temp_cert_file.write(cert_content.encode())
+        temp_cert_path = temp_cert_file.name
+    os.environ['REQUESTS_CA_BUNDLE'] = temp_cert_path
 
 def parse_arguments():
     """Парсит аргументы командной строки"""
@@ -98,8 +102,11 @@ def mr_exists(project, branch_name):
     return len(mrs) > 0, mrs[0].web_url if mrs else None
 
 def main():
-    cert_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../cert/cert.pem'))
-    configure_environment(cert_path)
+    cert_content = os.getenv("CERTIFICATE")
+    if cert_content is None:
+        raise RuntimeError("CERTIFICATE не найден в переменных окружения.")
+
+    configure_environment(cert_content)
 
     args = parse_arguments()
     validate_arguments(args)
@@ -113,7 +120,7 @@ def main():
     if repo.is_dirty(untracked_files=True):
         user_response = input(f"Целевая ветка '{args.base_branch}' содержит изменения. Продолжить? (y/n): ")
         if user_response.lower() != 'y':
-            raise RuntimeError("Процесс прерван пользователем из-за несохраненных изменений в целевой ветке.")
+            raise RuntimeError("Процесс прерван пользователем.")
     
     if current_branch_name != args.base_branch:
         raise RuntimeError(f"Вы не на ветке '{args.base_branch}'. Вы на ветке '{current_branch_name}'. Необходимо переключиться на целевую ветку '{args.base_branch}' для продолжения.")
@@ -127,7 +134,7 @@ def main():
         if mr_exist:
             raise RuntimeError(f"Merge Request для ветки '{new_branch_name}' уже существует. URL: {mr_url}")
         else:
-            raise RuntimeError(f"Ветка {new_branch_name} уже существует {location}, но Merge Request не существует. - создайте вручную.")
+            raise RuntimeError(f"Ветка {new_branch_name} уже существует {location}.")
 
     print("\n--- Подтверждение создания ветки и отправки на удаленный репозиторий ---\n")
     branch_info = [
@@ -140,7 +147,7 @@ def main():
     
     confirm_branch = input("Вы согласны создать и отправить ветку с такими данными? (y/n): ")
     if confirm_branch.lower() != "y":
-        raise RuntimeError("Создание ветки и отправка отменены пользователем.")
+        raise RuntimeError("Создание ветки и отправка  - отменены пользователем.")
 
     new_branch_ref = repo.create_head(new_branch_name)
     new_branch_ref.checkout()
