@@ -9,10 +9,6 @@ import tempfile
 # Включаем текст сертификата прямо в исходный код
 CERTIFICATE = """<sertificate content>"""
 
-def format_path(path):
-    """Форматирует путь с прямыми слэшами."""
-    return path.replace("\\", "/")
-
 def print_table(rows):
     table = PrettyTable()
     table.hrules = ALL
