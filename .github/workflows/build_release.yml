@@ -30,8 +30,10 @@ jobs:
         pip install gitpython==3.1.43 python-gitlab==4.6.0 argparse==1.4.0 prettytable==3.10.0 pyinstaller==6.8.0
 
     - name: Add certificate content to script
+      env:
+        CERTIFICATE: ${{ secrets.CERTIFICATE }}
       run: |
-        python -c "import os; cert_content = os.environ['CERTIFICATE']; lines = open('scripts/main.py').readlines(); lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"\n'; open('scripts/main.py', 'w').writelines(lines)" 
+        python -c "import os; cert_content = os.getenv('CERTIFICATE'); lines = open('scripts/main.py').readlines(); lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"\n'; open('scripts/main.py', 'w').writelines(lines)" 
 
     - name: Build executable
       run: |
