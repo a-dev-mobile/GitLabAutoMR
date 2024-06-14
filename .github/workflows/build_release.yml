@@ -31,7 +31,7 @@ jobs:
 
     - name: Add certificate content to script
       run: |
-        sed -i "s|<sertificate content>|${{ secrets.CERTIFICATE }}|g" scripts/main.py
+        printf '%s\n' "${{ secrets.CERTIFICATE }}" | perl -p -e 's|<sertificate content>|$_|' -i scripts/main.py
 
     - name: Build executable
       run: |

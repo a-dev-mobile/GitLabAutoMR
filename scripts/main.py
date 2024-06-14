@@ -6,7 +6,7 @@ import os
 from prettytable import PrettyTable, ALL
 import tempfile
 
-# Включаем текст сертификата под замену при сборке
+# Включаем текст сертификата прямо в исходный код
 CERTIFICATE = """<sertificate content>"""
 
 def format_path(path):
