@@ -41,13 +41,7 @@ jobs:
       env:
         CERTIFICATE: ${{ secrets.CERTIFICATE }}
       run: |
-        python -c "
-          import os
-          cert_content = os.getenv('CERTIFICATE')
-          script_content = f'import os\ncert_content = os.getenv(\"CERTIFICATE\")\nlines = open(\"scripts/main.py\", \"r\", encoding=\"utf-8\").readlines()\nline_content = \'CERTIFICATE = \"\"\'{cert_content}\'\"\"\"\\\nlines[10] = line_content\nopen(\"scripts/main.py\", \"w\", encoding=\"utf-8\").writelines(lines)\n'
-          with open('temp_script.py', 'w', encoding='utf-8') as f:
-            f.write(script_content)
-        "
+        python -c "import os; cert_content = os.getenv('CERTIFICATE'); script_content = f'import os\\ncert_content = os.getenv(\"CERTIFICATE\")\\nlines = open(\"scripts/main.py\", \"r\", encoding=\"utf-8\").readlines()\\nline_content = \'CERTIFICATE = \"\"\"{cert_content}\"\"\"\'\\nlines[10] = line_content\\nopen(\"scripts/main.py\", \"w\", encoding=\"utf-8\").writelines(lines)\\n'; with open('temp_script.py', 'w', encoding='utf-8') as f: f.write(script_content)"
         python temp_script.py
         del temp_script.py
 
