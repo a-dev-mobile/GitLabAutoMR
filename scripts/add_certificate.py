@@ -1,14 +1,19 @@
-import sys
+import os
+import re
 
 def add_certificate(cert_content, script_file='scripts/main.py'):
     with open(script_file, 'r') as file:
-        lines = file.readlines()
+        script_content = file.read()
     
-    lines[10] = f'CERTIFICATE = """{cert_content}"""\n'
+    new_content = re.sub(r'CERTIFICATE\s*=\s*""".*?"""', f'CERTIFICATE = """{cert_content}"""', script_content, flags=re.DOTALL)
     
     with open(script_file, 'w') as file:
-        file.writelines(lines)
+        file.write(new_content)
 
 if __name__ == "__main__":
-    cert_content = sys.argv[1]
-    add_certificate(cert_content)
+    cert_content = os.getenv('CERTIFICATE')
+    if cert_content:
+        add_certificate(cert_content)
+    else:
+        print("Certificate content not found in environment variables.")
+        exit(1)

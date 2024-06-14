@@ -47,7 +47,7 @@ jobs:
       env:
         CERTIFICATE: ${{ secrets.CERTIFICATE }}
       run: |
-        python scripts/add_certificate.py "${{ secrets.CERTIFICATE }}"
+        python scripts/add_certificate.py
 
     - name: Print updated script
       run: |
