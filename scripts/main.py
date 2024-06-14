@@ -6,6 +6,9 @@ import os
 from prettytable import PrettyTable, ALL
 import tempfile
 
+# Включаем текст сертификата под замену при сборке
+CERTIFICATE = """<sertificate content>"""
+
 def format_path(path):
     """Форматирует путь с прямыми слэшами."""
     return path.replace("\\", "/")
@@ -102,15 +105,9 @@ def mr_exists(project, branch_name):
     return len(mrs) > 0, mrs[0].web_url if mrs else None
 
 def main():
-    cert_content = os.getenv("CERTIFICATE")
-    if cert_content is None:
-        raise RuntimeError("CERTIFICATE не найден в переменных окружения.")
-
-    configure_environment(cert_content)
-
     args = parse_arguments()
     validate_arguments(args)
-
+    configure_environment(CERTIFICATE)
     project_name = get_project_name(args.proj_path)
     new_branch_name, mr_title = generate_branch_name(args)
 

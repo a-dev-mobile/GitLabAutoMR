@@ -29,14 +29,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install gitpython==3.1.43 python-gitlab==4.6.0 argparse==1.4.0 prettytable==3.10.0 pyinstaller==6.8.0
 
-    - name: Set CERTIFICATE environment variable
+    - name: Add certificate content to script
       run: |
-        echo "${{ secrets.CERTIFICATE }}" > certificate.pem
-        echo "REQUESTS_CA_BUNDLE=$(pwd)/certificate.pem" >> $GITHUB_ENV
+        sed -i "s|<sertificate content>|${{ secrets.CERTIFICATE }}|g" scripts/main.py
 
     - name: Build executable
       run: |
         pyinstaller --onefile scripts/main.py
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
