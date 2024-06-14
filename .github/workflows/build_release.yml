@@ -46,6 +46,7 @@ jobs:
     - name: Add certificate content to script
       env:
         CERTIFICATE: ${{ secrets.CERTIFICATE }}
+      shell: bash
       run: |
         python -c "import os; cert_content = os.getenv('CERTIFICATE'); lines = open('scripts/main.py').readlines(); lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"\n'; open('scripts/main.py', 'w').writelines(lines)"
 
