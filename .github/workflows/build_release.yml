@@ -41,9 +41,12 @@ jobs:
       env:
         CERTIFICATE: ${{ secrets.CERTIFICATE }}
       run: |
-        python -c "import os; cert_content = os.getenv('CERTIFICATE'); script_content = f'import os\\ncert_content = os.getenv(\"CERTIFICATE\")\\nlines = open(\"scripts/main.py\", \"r\", encoding=\"utf-8\").readlines()\\nline_content = \'CERTIFICATE = \"\"\"{cert_content}\"\"\"\'\\nlines[10] = line_content\\nopen(\"scripts/main.py\", \"w\", encoding=\"utf-8\").writelines(lines)\\n'; with open('temp_script.py', 'w', encoding='utf-8') as f: f.write(script_content)"
+        $certContent = [System.Environment]::GetEnvironmentVariable("CERTIFICATE")
+        $scriptContent = "import os`ncert_content = os.getenv('CERTIFICATE')`nlines = open('scripts/main.py', 'r', encoding='utf-8').readlines()`nline_content = 'CERTIFICATE = \"\"\"{0}\"\"\"'.format(cert_content)`nlines[10] = line_content + '`n'`nopen('scripts/main.py', 'w', encoding='utf-8').writelines(lines)".replace("{0}", $certContent)
+        Set-Content -Path "temp_script.py" -Value $scriptContent
         python temp_script.py
-        del temp_script.py
+        Remove-Item -Path "temp_script.py"
+  
 
     - name: Build executable
       run: |
