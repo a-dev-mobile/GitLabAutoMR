@@ -19,6 +19,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: List directory contents
+      run: ls -alh
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -29,19 +32,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install gitpython==3.1.43 python-gitlab==4.6.0 argparse==1.4.0 prettytable==3.10.0 pyinstaller==6.8.0
 
-    - name: Add certificate content to script (Linux/MacOS)
-      if: runner.os != 'Windows'
+    - name: Add certificate content to script
       env:
         CERTIFICATE: ${{ secrets.CERTIFICATE }}
       run: |
         python -c "import os; cert_content = os.getenv('CERTIFICATE'); lines = open('scripts/main.py').readlines(); lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"\n'; open('scripts/main.py', 'w').writelines(lines)"
-
-    - name: Add certificate content to script (Windows)
-      if: runner.os == 'Windows'
-      env:
-        CERTIFICATE: ${{ secrets.CERTIFICATE }}
-      run: |
-        python -c "import os; import pathlib; temp_dir = os.getenv('RUNNER_TEMP'); pathlib.Path(temp_dir).mkdir(parents=True, exist_ok=True); cert_content = os.getenv('CERTIFICATE'); cert_file_path = os.path.join(temp_dir, 'mykeys.yaml'); with open(cert_file_path, 'w', encoding='utf-8') as key_file: key_file.write(cert_content); lines = open('scripts/main.py', 'r', encoding='utf-8').readlines(); cert_line = 'CERTIFICATE = \"\"\"' + open(cert_file_path, 'r', encoding='utf-8').read() + '\"\"\"\\n'; lines[10] = cert_line; open('scripts/main.py', 'w', encoding='utf-8').writelines(lines)"
 
     - name: Print updated script
       run: |
@@ -50,6 +45,7 @@ jobs:
     - name: Build executable
       run: |
         pyinstaller --onefile scripts/main.py
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
