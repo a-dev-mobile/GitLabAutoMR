@@ -31,10 +31,7 @@ jobs:
 
     - name: Add certificate content to script
       run: |
-        python -c "cert_content = '''${{ secrets.CERTIFICATE }}'''; \
-                  with open('scripts/main.py', 'r') as file: lines = file.readlines(); \
-                  lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"\n'; \
-                  with open('scripts/main.py', 'w') as file: file.writelines(lines)"
+        python -c "import os; cert_content = os.environ['CERTIFICATE']; lines = open('scripts/main.py').readlines(); lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"\n'; open('scripts/main.py', 'w').writelines(lines)" 
 
     - name: Build executable
       run: |
