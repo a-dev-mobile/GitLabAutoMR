@@ -30,15 +30,19 @@ jobs:
         python -m pip install --upgrade pip
         pip install gitpython==3.1.43 python-gitlab==4.6.0 argparse==1.4.0 prettytable==3.10.0 pyinstaller==6.8.0
 
-    - name: Add certificate content to script
+    - name: Add certificate content to script (Linux/MacOS)
+      if: runner.os != 'Windows'
       env:
         CERTIFICATE: ${{ secrets.CERTIFICATE }}
       run: |
-        if [ ${{ matrix.os }} = 'windows-latest' ]; then
-          powershell -Command "python -c \"import os; cert_content = os.getenv('CERTIFICATE'); lines = open('scripts/main.py').readlines(); lines[10] = f'CERTIFICATE = '''\"'''{cert_content}'''\"'''\n'; open('scripts/main.py', 'w').writelines(lines)\""
-        else
-          python -c "import os; cert_content = os.getenv('CERTIFICATE'); lines = open('scripts/main.py').readlines(); lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"\n'; open('scripts/main.py', 'w').writelines(lines)"
-        fi
+        python -c "import os; cert_content = os.getenv('CERTIFICATE'); lines = open('scripts/main.py').readlines(); lines[10] = f'CERTIFICATE = \"\"\"{cert_content}\"\"\"\n'; open('scripts/main.py', 'w').writelines(lines)"
+
+    - name: Add certificate content to script (Windows)
+      if: runner.os == 'Windows'
+      env:
+        CERTIFICATE: ${{ secrets.CERTIFICATE }}
+      run: |
+        python -c "import os; cert_content = os.getenv('CERTIFICATE'); lines = open('scripts/main.py').readlines(); lines[10] = f'CERTIFICATE = '''\"'''{cert_content}'''\"'''\n'; open('scripts/main.py', 'w').writelines(lines)"
 
     - name: Build executable
       run: |
