@@ -53,8 +53,8 @@ def validate_arguments(args):
     if not args.jira_task_id and not args.branch_desc:
         raise ValueError("И jira_task_id, и branch_desc пустые.")
 
-    if args.branch_desc and not re.match(r'^[a-z0-9_]+$', args.branch_desc):
-        raise ValueError("branch_desc должно содержать только латинские буквы в нижнем регистре, цифры и нижние подчеркивания.")
+    if args.branch_desc and not re.match(r'^[a-z0-9_.]+$', args.branch_desc):
+        raise ValueError("branch_desc должно содержать только латинские буквы в нижнем регистре, цифры, точки и нижние подчеркивания.")
 
 def generate_branch_name(args):
     """Генерирует имя новой ветки на основе аргументов"""
