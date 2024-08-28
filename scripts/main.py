@@ -58,12 +58,14 @@ def validate_arguments(args):
 
 def generate_branch_name(args):
     """Генерирует имя новой ветки на основе аргументов"""
+    suffix = "" if args.branch_type == "release" else "-short"
+    
     if not args.jira_task_id:
-        return f"{args.branch_type}/{args.branch_desc}-short", args.mr_title
+        return f"{args.branch_type}/{args.branch_desc}{suffix}", args.mr_title
     elif args.branch_desc:
-        return f"{args.branch_type}/{args.jira_task_id}_{args.branch_desc}-short", args.mr_title
+        return f"{args.branch_type}/{args.jira_task_id}_{args.branch_desc}{suffix}", args.mr_title
     else:
-        return f"{args.branch_type}/{args.jira_task_id}-short", args.mr_title
+        return f"{args.branch_type}/{args.jira_task_id}{suffix}", args.mr_title
 
 def branch_exists(repo, branch_name):
     """Проверяет существование ветки локально и на удаленных репозиториях"""
