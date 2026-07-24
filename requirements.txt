@@ -1,4 +1,4 @@
-gitpython==3.1.43
+gitpython==3.1.52
 python-gitlab==4.6.0
 argparse ==1.4.0
 prettytable == 3.10.0
